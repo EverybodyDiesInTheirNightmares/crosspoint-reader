@@ -33,3 +33,7 @@ lib/EpdFont/scripts/output/
 sdkconfig.sticky
 sdkconfig.x4pro
 flake.*
+
+# personal build artifacts
+firmware_out/
+gh_auth_*.log
