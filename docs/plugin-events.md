@@ -75,10 +75,13 @@ All values are strings in the event's `vars` object:
 Only successful ordinary forward turns count. A displayed page contributes
 when it remains visible for at least 2 seconds; one dwell is capped at 1800
 seconds. Reverse turns, chapter skips, failed turns, and shorter displays are
-excluded and re-anchor the timer. At least 10 active seconds and a trustworthy
-positive start time are required. EPUB retains basis-point precision; TXT/XTC
-may report whole-percent steps. The document hash is calculated lazily only
-when an emit-worthy summary and a subscriber both exist.
+excluded. When another activity covers the reader, the visible dwell is closed
+and the timer re-anchors on the reader's next render; time spent in the child
+activity is excluded. The final visible dwell is closed during sleep or reader
+teardown. At least 10 active seconds and a trustworthy positive start time are
+required. EPUB retains basis-point precision; TXT/XTC may report whole-percent
+steps. The document hash is calculated lazily only when an emit-worthy summary
+and a subscriber both exist.
 
 `end_time` is deliberately not the wall-clock time of the last interaction.
 Idle gaps are removed, so it always equals `start_time + duration_seconds` and

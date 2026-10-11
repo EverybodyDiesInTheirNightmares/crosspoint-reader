@@ -39,6 +39,40 @@ TEST(ReaderSession, AccumulatesSuccessfulForwardDwellsAndCompactsEndTime) {
   EXPECT_TRUE(session.isEmitWorthy());
 }
 
+TEST(ReaderSession, FinalizesLastRenderedPageDwell) {
+  ReaderSession session;
+  anchor(session, 1000, 1000, 2400);
+  session.finish(31000);
+
+  EXPECT_EQ(session.startTime(), 1000);
+  EXPECT_EQ(session.durationSeconds(), 30u);
+  EXPECT_EQ(session.startProgressBp(), 2400);
+  EXPECT_EQ(session.endProgressBp(), 2400);
+  EXPECT_TRUE(session.isEmitWorthy());
+}
+
+TEST(ReaderSession, ExcludesTimeWhileReaderIsCoveredByAnotherActivity) {
+  ReaderSession session;
+  anchor(session, 1000, 1000, 2400);
+  session.pause(11000);
+  session.finish(61000);
+  EXPECT_EQ(session.durationSeconds(), 10u);
+
+  anchor(session, 61000, 1060, 2400);
+  session.finish(71000);
+  EXPECT_EQ(session.durationSeconds(), 20u);
+}
+
+TEST(ReaderSession, CountsOnlySuccessfulForwardPageTurns) {
+  ReaderSession session;
+  session.noteTurn(false, true);
+  session.noteTurn(true, false);
+  EXPECT_EQ(session.turnCount(), 0u);
+
+  session.noteTurn(true, true);
+  EXPECT_EQ(session.turnCount(), 1u);
+}
+
 TEST(ReaderSession, ExcludesBackwardSkipAndFailedTurns) {
   ReaderSession session;
   anchor(session, 1000, 100, 1000);

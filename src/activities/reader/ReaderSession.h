@@ -8,6 +8,8 @@ class ReaderSession {
  public:
   void noteTurn(bool forward, bool succeeded);
   void onRenderComplete(uint32_t monotonicMs, int64_t trustedEpoch, int progressBp);
+  void pause(uint32_t monotonicMs);
+  void finish(uint32_t monotonicMs);
   void reset();
 
   bool isEmitWorthy() const { return startEpoch > 0 && duration >= 10 && endTime() > startEpoch; }
@@ -16,11 +18,12 @@ class ReaderSession {
   uint32_t durationSeconds() const { return duration; }
   uint16_t startProgressBp() const { return startProgress; }
   uint16_t endProgressBp() const { return endProgress; }
-  // Successful page turns this session (reading-stats page counter).
+  // Successful forward page turns this session (reading-stats page counter).
   uint16_t turnCount() const { return turns; }
 
  private:
   static uint16_t clampProgress(int progressBp);
+  void accumulateDwell(uint32_t elapsedMs, uint16_t progress);
 
   uint32_t anchorMs = 0;
   int64_t anchorEpoch = 0;

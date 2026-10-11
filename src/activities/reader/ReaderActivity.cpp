@@ -126,7 +126,10 @@ void ReaderActivity::onExit() {
 
 void ReaderActivity::prepareForSleep() { flushReaderSession(); }
 
+void ReaderActivity::onPause() { readerSession.pause(millis()); }
+
 void ReaderActivity::flushReaderSession() {
+  readerSession.finish(millis());
   if (!readerSession.isEmitWorthy()) {
     readerSession.reset();
     return;
