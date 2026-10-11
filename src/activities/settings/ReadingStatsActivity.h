@@ -1,4 +1,5 @@
 #pragma once
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -19,6 +20,8 @@ class ReadingStatsActivity final : public UiListActivity {
   void activateIndex(int index) override;
   const char* headerTitle() const override;
 
-  std::vector<std::string> valueStorage_;  // backs ListItem value pointers
+  // deque: push_back never reallocates, so the const char* pointers captured
+  // in rowItems_ stay valid for the whole page's lifetime.
+  std::deque<std::string> valueStorage_;
   std::vector<freeink::ui::ListItem> rowItems_;
 };

@@ -132,10 +132,11 @@ void ReaderActivity::flushReaderSession() {
     return;
   }
 
+  const std::string document = KOReaderDocumentId::calculate(bookPath);
+
   // Reading stats fold in before the plugin gate: the store must receive every
   // session, not just those a plugin happens to be listening for.
   {
-    const std::string document = KOReaderDocumentId::calculate(bookPath);
     const std::string title = getBookTitle();
     const std::string author = getBookAuthor();
     READING_STATS.recordSession(readerSession.endTime(), readerSession.durationSeconds(), readerSession.turnCount(),
@@ -148,7 +149,6 @@ void ReaderActivity::flushReaderSession() {
     return;
   }
 
-  const std::string document = KOReaderDocumentId::calculate(bookPath);
   const bool validDocument =
       document.size() == 32 && std::all_of(document.begin(), document.end(), [](const unsigned char c) {
         return std::isdigit(c) || (c >= 'a' && c <= 'f');

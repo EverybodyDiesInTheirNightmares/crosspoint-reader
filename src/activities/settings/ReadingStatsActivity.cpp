@@ -50,10 +50,8 @@ void ReadingStatsActivity::onEnter() {
   valueStorage_.clear();
   rowItems_.clear();
 
-  // Rows hold const char* pointers into valueStorage_; reserve so pointers
-  // stay valid as the vector grows.
-  valueStorage_.reserve(64);
-  rowItems_.reserve(48);
+  // Rows hold const char* pointers into valueStorage_; deque growth never
+  // moves existing elements, so every pointer stays valid.
 
   // --- summary metrics (CrossMux's summary cards, as rows) ---
   uint32_t seconds = 0;
