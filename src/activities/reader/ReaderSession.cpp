@@ -11,7 +11,10 @@ uint16_t ReaderSession::clampProgress(const int progressBp) {
   return static_cast<uint16_t>(std::clamp(progressBp, 0, 10000));
 }
 
-void ReaderSession::noteTurn(const bool forward, const bool succeeded) { pendingForward = forward && succeeded; }
+void ReaderSession::noteTurn(const bool forward, const bool succeeded) {
+  pendingForward = forward && succeeded;
+  if (succeeded && turns < UINT16_MAX) turns++;
+}
 
 void ReaderSession::onRenderComplete(const uint32_t monotonicMs, const int64_t trustedEpoch, const int progressBp) {
   const uint16_t progress = clampProgress(progressBp);
@@ -44,6 +47,7 @@ void ReaderSession::reset() {
   anchorProgress = 0;
   startProgress = 0;
   endProgress = 0;
+  turns = 0;
   hasAnchor = false;
   pendingForward = false;
 }

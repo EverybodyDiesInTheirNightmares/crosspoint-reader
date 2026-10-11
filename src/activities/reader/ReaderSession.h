@@ -16,6 +16,8 @@ class ReaderSession {
   uint32_t durationSeconds() const { return duration; }
   uint16_t startProgressBp() const { return startProgress; }
   uint16_t endProgressBp() const { return endProgress; }
+  // Successful page turns this session (reading-stats page counter).
+  uint16_t turnCount() const { return turns; }
 
  private:
   static uint16_t clampProgress(int progressBp);
@@ -27,6 +29,7 @@ class ReaderSession {
   uint16_t anchorProgress = 0;
   uint16_t startProgress = 0;
   uint16_t endProgress = 0;
+  uint16_t turns = 0;
   bool hasAnchor = false;
   bool pendingForward = false;
 };

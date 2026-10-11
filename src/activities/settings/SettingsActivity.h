@@ -17,6 +17,7 @@ enum class SettingAction {
   RemapFrontButtons,
   CustomiseStatusBar,
   ClockSettings,
+  ReadingStats,
   KOReaderSync,
   OPDSBrowser,
   Network,

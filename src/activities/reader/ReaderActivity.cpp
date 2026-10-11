@@ -16,6 +16,7 @@
 #include "EpubReaderActivity.h"
 #include "ReaderUtils.h"
 #include "RecentBooksStore.h"
+#include "ReadingStatsStore.h"
 #include "SdCardFontSystem.h"
 #include "XtcReaderActivity.h"
 #include "util/PluginEvents.h"
@@ -126,7 +127,23 @@ void ReaderActivity::onExit() {
 void ReaderActivity::prepareForSleep() { flushReaderSession(); }
 
 void ReaderActivity::flushReaderSession() {
-  if (!readerSession.isEmitWorthy() || !pluginevents::anySubscriber(pluginevents::Event::ReaderSession)) {
+  if (!readerSession.isEmitWorthy()) {
+    readerSession.reset();
+    return;
+  }
+
+  // Reading stats fold in before the plugin gate: the store must receive every
+  // session, not just those a plugin happens to be listening for.
+  {
+    const std::string document = KOReaderDocumentId::calculate(bookPath);
+    const std::string title = getBookTitle();
+    const std::string author = getBookAuthor();
+    READING_STATS.recordSession(readerSession.endTime(), readerSession.durationSeconds(), readerSession.turnCount(),
+                                document.c_str(), bookPath.c_str(), title.c_str(), author.c_str(),
+                                readerSession.endProgressBp());
+  }
+
+  if (!pluginevents::anySubscriber(pluginevents::Event::ReaderSession)) {
     readerSession.reset();
     return;
   }
