@@ -85,7 +85,7 @@ bool ReadingStatsStore::fromJson(JsonVariantConst doc) {
     book.seconds = obj["s"] | 0;
     book.pages = obj["p"] | 0;
     book.sessions = obj["n"] | 0;
-    book.lastReadAt = obj["last"] | 0;
+    book.lastReadAt = obj["last"] | 0LL;
     book.lastProgressBp = obj["prog"] | 0;
     books.push_back(book);
   }
