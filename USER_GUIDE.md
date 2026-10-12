@@ -331,6 +331,12 @@ The Settings screen allows you to configure the device's behavior. There are a f
 
 - **Time to Sleep**: Set the duration of inactivity before the device automatically goes to sleep; options are 1, 3, 5, 10 (default), 15 or 30 minutes.
 
+- **Daily Reading Goal**: Set a target from 5 to 240 minutes in 5-minute steps.
+
+- **Reading Stats**: Open the reading summary, monthly heatmap, per-day details, or per-book details. The summary includes today, the last 7 and 30 days, lifetime totals, reading streaks, and progress toward the daily goal. The best goal streak is calculated from the retained 365-day window. Reading time is saved when you leave the book or the device prepares to sleep; a session needs at least 10 counted seconds. A page contributes after it has remained visible for at least 2 seconds, and only successful forward turns count as pages. Calendar-day statistics use a valid system time, restored from a prior trusted timestamp or seeded from a valid RTC at boot. If neither is available, connect to Wi-Fi and sync the clock before reading.
+
+  In a book's details, select one of its listed reading days, then choose **Add Reading Time** or **Subtract Reading Time** to correct that book/day pair in 5-minute increments from 5 to 180 minutes. Corrections are available only for retained per-book/day entries. Daily totals and the heatmap retain up to 365 recorded dates; per-book/day detail is bounded to the 128 pairs with the newest reading dates to keep memory and SD snapshots bounded. Older imported files without per-book/day detail keep their totals but cannot be corrected by date.
+
 - **Wi-Fi Networks**: Connect to Wi-Fi networks for file transfers and firmware updates.
 
 - **CrossPoint Sync**: Settings for syncing book progress with CrossPoint Sync or a compatible KOSync server. **Smart sync** is the default for new configurations and auto-resolves simple push/pull decisions. Existing credential files retain **Ask every time** when migrated; you can switch Sync Behavior at any time if you prefer manual confirmation.

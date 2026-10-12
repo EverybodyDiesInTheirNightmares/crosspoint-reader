@@ -21,6 +21,12 @@ struct ReadingStatsDay {
   bool operator==(const ReadingStatsDay& other) const { return date == other.date; }
 };
 
+struct ReadingStatsBookDay {
+  char bookId[41] = {};
+  uint32_t dayOrdinal = 0;
+  uint32_t seconds = 0;
+};
+
 struct ReadingStatsBook {
   std::string bookId;    // KOReader document id (32 hex chars), stable across moves
   std::string path;      // most recent known path (display fallback only)
@@ -35,15 +41,19 @@ struct ReadingStatsBook {
 
 class ReadingStatsStore : public PersistableStore<ReadingStatsStore> {
  public:
-  // Rolling windows: a year of daily rows and the 128 most recently read
-  // books. One day row is ~24 bytes of RAM plus the date string; books carry
-  // short strings, so both caps stay well under a kilobyte total.
+  // Keep a year of daily totals, 128 books, and 128 per-book/day detail rows.
+  // The detail table's fixed payload is about 6.5 KB; its independent cap also
+  // bounds the persisted JSON snapshot on low-memory boards.
   static constexpr size_t MAX_DAYS = 365;
   static constexpr size_t MAX_BOOKS = 128;
+  static constexpr size_t MAX_BOOK_DAY_ENTRIES = 128;
 
  private:
   std::vector<ReadingStatsDay> days;  // sorted by date ascending (newest last)
   std::vector<ReadingStatsBook> books;  // sorted by lastReadAt descending
+  std::vector<ReadingStatsBookDay> bookDays;  // most recent book/day pairs, capped independently
+  uint64_t totalSeconds = 0;
+  uint64_t totalPages = 0;
 
   ReadingStatsStore() = default;
   ~ReadingStatsStore() = default;
@@ -62,11 +72,16 @@ class ReadingStatsStore : public PersistableStore<ReadingStatsStore> {
   // Persists on success (flushes are infrequent — reader exit / sleep only).
   void recordSession(int64_t sessionEndEpoch, uint32_t durationSeconds, uint32_t pages, const char* bookId,
                      const char* bookPath, const char* title, const char* author, uint16_t endProgressBp);
+  bool adjustBookReadingTime(const char* bookId, const char* date, int32_t deltaSeconds);
 
   // Chronological, oldest first, at most MAX_DAYS entries.
   const std::vector<ReadingStatsDay>& getDays() const { return days; }
   // Most recently read first, at most MAX_BOOKS entries.
   const std::vector<ReadingStatsBook>& getBooks() const { return books; }
+  const std::vector<ReadingStatsBookDay>& getBookDays() const { return bookDays; }
+  const ReadingStatsBook* findBookById(const char* bookId) const;
+  static bool getDayOrdinal(const char* date, uint32_t& ordinal);
+  static bool formatDayOrdinal(uint32_t ordinal, char* out, size_t outSize);
 
   const ReadingStatsDay* findDay(const char* date) const;
 
@@ -77,6 +92,8 @@ class ReadingStatsStore : public PersistableStore<ReadingStatsStore> {
   // Consecutive days with >0 seconds ending today (or yesterday, so a morning
   // reader doesn't see the streak die at 00:00); 0 when no data.
   int currentStreak() const;
+  int currentGoalStreak(uint32_t dailyGoalSeconds) const;
+  int maxGoalStreak(uint32_t dailyGoalSeconds) const;
 };
 
 // Helper macro to access reading stats store

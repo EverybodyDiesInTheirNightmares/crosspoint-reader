@@ -11,6 +11,12 @@ bool PersistableStoreBase::writeDocToFile(const char* path, const JsonDocument& 
   Storage.mkdir("/.crosspoint");
   String json;
   serializeJson(doc, json);
+  if (doc.overflowed()) {
+    // A truncated snapshot would fail to parse on the next boot and wipe the
+    // store; keeping the previous file loses only this save.
+    LOG_ERR("PERSIST", "JSON overflow while serializing %s", path);
+    return false;
+  }
   if (!Storage.writeFile(path, json)) {
     LOG_ERR("PERSIST", "Failed to write %s", path);
     return false;

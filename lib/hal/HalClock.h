@@ -22,6 +22,9 @@ class HalClock {
   // Call after BoardConfig has selected the active device.
   void begin();
 
+  // Seed the system UTC clock from a valid RTC without moving time backward.
+  bool seedSystemClockFromRtc();
+
   // True if an RTC is present on this device
   bool isAvailable() const { return _available; }
 

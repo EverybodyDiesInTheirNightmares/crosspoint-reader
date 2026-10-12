@@ -3,16 +3,25 @@
 #include <Logging.h>
 #include <WiFi.h>
 #include <esp_sntp.h>
+#include <sys/time.h>
 #include <time.h>
 
 HalClock halClock;  // Singleton instance
 
-void HalClock::begin() {
-  _available = _sdkRtc.begin();
-  LOG_INF("CLK", _available ? "SDK RTC found" : "RTC not found");
+namespace {
+constexpr int64_t MIN_VALID_EPOCH = 1735689600LL;
+
+bool isValidRtcDateTime(const Rtc::DateTime& dt) {
+  if (dt.year < 2025 || dt.year > 2099 || dt.month < 1 || dt.month > 12 || dt.hour > 23 || dt.minute > 59 ||
+      dt.second > 59) {
+    return false;
+  }
+  static constexpr uint8_t DAYS_PER_MONTH[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  const bool leapYear = dt.year % 4 == 0 && (dt.year % 100 != 0 || dt.year % 400 == 0);
+  const uint8_t maxDay = dt.month == 2 && leapYear ? 29 : DAYS_PER_MONTH[dt.month - 1];
+  return dt.day >= 1 && dt.day <= maxDay;
 }
 
-namespace {
 // UTC calendar date -> Unix epoch, no timezone involvement (newlib has no
 // timegm). Days-from-civil per Howard Hinnant's algorithm.
 time_t epochFromUtc(const Rtc::DateTime& dt) {
@@ -27,6 +36,29 @@ time_t epochFromUtc(const Rtc::DateTime& dt) {
   return static_cast<time_t>(days) * 86400 + dt.hour * 3600L + dt.minute * 60L + dt.second;
 }
 }  // namespace
+
+void HalClock::begin() {
+  _available = _sdkRtc.begin();
+  LOG_INF("CLK", _available ? "SDK RTC found" : "RTC not found");
+}
+
+bool HalClock::seedSystemClockFromRtc() {
+  if (!_available) return false;
+
+  Rtc::DateTime dt;
+  if (!_sdkRtc.now(dt) || !isValidRtcDateTime(dt)) return false;
+
+  const time_t rtcEpoch = epochFromUtc(dt);
+  if (static_cast<int64_t>(rtcEpoch) < MIN_VALID_EPOCH || time(nullptr) >= rtcEpoch) return false;
+
+  const timeval tv = {rtcEpoch, 0};
+  if (settimeofday(&tv, nullptr) != 0) return false;
+
+  _cachedUtc = rtcEpoch;
+  _hasCachedTime = true;
+  _lastPollMs = millis() != 0 ? millis() : 1;
+  return true;
+}
 
 void HalClock::setTimezone(const char* posixTz) {
   setenv("TZ", posixTz && posixTz[0] != '\0' ? posixTz : "UTC0", 1);

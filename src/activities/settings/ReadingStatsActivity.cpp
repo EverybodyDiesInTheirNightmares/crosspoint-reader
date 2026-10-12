@@ -2,9 +2,13 @@
 
 #include <GfxRenderer.h>
 #include <I18n.h>
+#include <Logging.h>
+#include <Memory.h>
 
 #include "MappedInputManager.h"
 #include "ReadingStatsStore.h"
+#include "ReadingHeatmapActivity.h"
+#include "ReadingStatsDetailActivity.h"
 #include "components/UITheme.h"
 
 namespace fui = freeink::ui;
@@ -15,12 +19,12 @@ namespace {
 // below it, "<1 min" for sub-minute readings.
 void formatDuration(uint32_t seconds, char (&out)[16]) {
   if (seconds >= 3600) {
-    snprintf(out, sizeof(out), "%luh %lum", static_cast<unsigned long>(seconds / 3600),
+    snprintf(out, sizeof(out), tr(STR_STATS_DURATION_HOURS_FORMAT), static_cast<unsigned long>(seconds / 3600),
              static_cast<unsigned long>((seconds % 3600) / 60));
   } else if (seconds >= 60) {
-    snprintf(out, sizeof(out), "%lu min", static_cast<unsigned long>(seconds / 60));
+    snprintf(out, sizeof(out), tr(STR_STATS_DURATION_MINUTES_FORMAT), static_cast<unsigned long>(seconds / 60));
   } else {
-    snprintf(out, sizeof(out), "<1 min");
+    snprintf(out, sizeof(out), "%s", tr(STR_STATS_DURATION_LESS_THAN_MINUTE));
   }
 }
 
@@ -28,7 +32,7 @@ void formatDayValue(uint32_t seconds, uint32_t pages, std::string& out) {
   char dur[16];
   formatDuration(seconds, dur);
   char buf[40];
-  snprintf(buf, sizeof(buf), "%s / %lu pages", dur, static_cast<unsigned long>(pages));
+  snprintf(buf, sizeof(buf), tr(STR_STATS_PAGES_FORMAT), dur, static_cast<unsigned long>(pages));
   out = buf;
 }
 
@@ -46,9 +50,18 @@ ReadingStatsActivity::ReadingStatsActivity(GfxRenderer& renderer, MappedInputMan
 
 void ReadingStatsActivity::onEnter() {
   UiListActivity::onEnter();
+  rebuildRows();
+  nav.reset(0);
+}
 
+void ReadingStatsActivity::rebuildRows() {
   valueStorage_.clear();
   rowItems_.clear();
+  recentDayDates_.clear();
+  visibleBookIds_.clear();
+  heatmapIndex_ = -1;
+  recentDayRowsStart_ = -1;
+  bookRowsStart_ = -1;
 
   // Rows hold const char* pointers into valueStorage_; deque growth never
   // moves existing elements, so every pointer stays valid.
@@ -58,6 +71,17 @@ void ReadingStatsActivity::onEnter() {
   uint32_t pages = 0;
 
   READING_STATS.sumRecent(1, seconds, pages);
+  char goalValue[40];
+  char goalDuration[16];
+  char todayDuration[16];
+  formatDuration(static_cast<uint32_t>(SETTINGS.dailyReadingGoalMinutes) * 60, goalDuration);
+  formatDuration(seconds, todayDuration);
+  snprintf(goalValue, sizeof(goalValue), "%s / %s", todayDuration, goalDuration);
+  valueStorage_.emplace_back(goalValue);
+  rowItems_.push_back(makeRow(tr(STR_STATS_DAILY_GOAL), valueStorage_.back().c_str()));
+  heatmapIndex_ = static_cast<int>(rowItems_.size());
+  rowItems_.push_back(makeRow(tr(STR_STATS_HEATMAP), nullptr));
+
   valueStorage_.emplace_back();
   formatDayValue(seconds, pages, valueStorage_.back());
   rowItems_.push_back(makeRow(tr(STR_STATS_TODAY), valueStorage_.back().c_str()));
@@ -83,11 +107,20 @@ void ReadingStatsActivity::onEnter() {
     valueStorage_.emplace_back(buf);
     rowItems_.push_back(makeRow(tr(STR_STATS_DAY_STREAK), valueStorage_.back().c_str()));
   }
+  {
+    const uint32_t goalSeconds = static_cast<uint32_t>(SETTINGS.dailyReadingGoalMinutes) * 60;
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%d / %d", READING_STATS.currentGoalStreak(goalSeconds),
+             READING_STATS.maxGoalStreak(goalSeconds));
+    valueStorage_.emplace_back(buf);
+    rowItems_.push_back(makeRow(tr(STR_STATS_GOAL_STREAK), valueStorage_.back().c_str()));
+  }
 
   // --- recent days section (rolling window, newest first) ---
   valueStorage_.emplace_back(tr(STR_STATS_RECENT_DAYS));
   rowItems_.push_back(makeRow(valueStorage_.back().c_str(), nullptr));
   rowItems_.back().isHeader = true;
+  recentDayRowsStart_ = static_cast<int>(rowItems_.size());
 
   const auto& days = READING_STATS.getDays();
   constexpr size_t MAX_RECENT_DAY_ROWS = 14;
@@ -99,12 +132,14 @@ void ReadingStatsActivity::onEnter() {
     valueStorage_.emplace_back();
     formatDayValue(it->seconds, it->pages, valueStorage_.back());
     rowItems_.push_back(makeRow((valueStorage_.end() - 2)->c_str(), valueStorage_.back().c_str()));
+    recentDayDates_.push_back(it->date);
   }
 
   // --- books section (most recently read first) ---
   valueStorage_.emplace_back(tr(STR_STATS_BOOKS));
   rowItems_.push_back(makeRow(valueStorage_.back().c_str(), nullptr));
   rowItems_.back().isHeader = true;
+  bookRowsStart_ = static_cast<int>(rowItems_.size());
 
   const auto& books = READING_STATS.getBooks();
   constexpr size_t MAX_BOOK_ROWS = 20;
@@ -123,14 +158,15 @@ void ReadingStatsActivity::onEnter() {
     item.subtitle = (valueStorage_.end() - 2)->c_str();
     item.value = valueStorage_.back().c_str();
     rowItems_.push_back(item);
+    visibleBookIds_.push_back(book.bookId);
     bookRows++;
   }
+
+  if (days.empty() && books.empty()) rowItems_.push_back(makeRow(tr(STR_STATS_NO_DATA), nullptr));
 
   if (rowItems_.empty()) {
     rowItems_.push_back(makeRow(tr(STR_STATS_NO_DATA), nullptr));
   }
-
-  nav.reset(0);
 }
 
 int ReadingStatsActivity::listCount() const { return static_cast<int>(rowItems_.size()); }
@@ -138,8 +174,37 @@ int ReadingStatsActivity::listCount() const { return static_cast<int>(rowItems_.
 const char* ReadingStatsActivity::headerTitle() const { return tr(STR_READING_STATS); }
 
 void ReadingStatsActivity::activateIndex(int index) {
-  // Read-only page; tapping a row just moves the selection.
-  (void)index;
+  if (index == heatmapIndex_) {
+    auto activity = makeUniqueNoThrow<ReadingHeatmapActivity>(renderer, mappedInput);
+    if (!activity) {
+      LOG_ERR("STATS", "OOM: reading heatmap");
+      return;
+    }
+    app.clearTapFlash();
+    startActivityForResult(std::move(activity), [this](const ActivityResult&) { RenderLock lock(*this); rebuildRows(); });
+    return;
+  }
+  const int dayIndex = index - recentDayRowsStart_;
+  if (dayIndex >= 0 && static_cast<size_t>(dayIndex) < recentDayDates_.size()) {
+    auto activity = makeUniqueNoThrow<ReadingStatsDetailActivity>(renderer, mappedInput, "", recentDayDates_[dayIndex]);
+    if (!activity) {
+      LOG_ERR("STATS", "OOM: reading-day detail");
+      return;
+    }
+    app.clearTapFlash();
+    startActivityForResult(std::move(activity), [this](const ActivityResult&) { RenderLock lock(*this); rebuildRows(); });
+    return;
+  }
+  const int bookIndex = index - bookRowsStart_;
+  if (bookIndex >= 0 && static_cast<size_t>(bookIndex) < visibleBookIds_.size()) {
+    auto activity = makeUniqueNoThrow<ReadingStatsDetailActivity>(renderer, mappedInput, visibleBookIds_[bookIndex], "");
+    if (!activity) {
+      LOG_ERR("STATS", "OOM: book reading stats detail");
+      return;
+    }
+    app.clearTapFlash();
+    startActivityForResult(std::move(activity), [this](const ActivityResult&) { RenderLock lock(*this); rebuildRows(); });
+  }
 }
 
 void ReadingStatsActivity::buildScreen(UiScreen& screen) {

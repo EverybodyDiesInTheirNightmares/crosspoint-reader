@@ -441,6 +441,8 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
                             StrId::STR_CAT_SYSTEM),
         SettingInfo::Toggle(StrId::STR_LIBRARY_USE_METADATA, &CrossPointSettings::libraryUseMetadata,
                             "libraryUseMetadata", StrId::STR_CAT_SYSTEM),
+        SettingInfo::Value(StrId::STR_DAILY_READING_GOAL, &CrossPointSettings::dailyReadingGoalMinutes, {5, 240, 5},
+               "dailyReadingGoalMinutes", StrId::STR_CAT_SYSTEM),
         SettingInfo::Toggle(StrId::STR_REMOVE_READ_FROM_RECENTS, &CrossPointSettings::removeReadBooksFromRecents,
                             "removeReadBooksFromRecents", StrId::STR_CAT_SYSTEM),
         SettingInfo::Toggle(StrId::STR_MOVE_FINISHED_TO_READ, &CrossPointSettings::moveFinishedToReadFolder,

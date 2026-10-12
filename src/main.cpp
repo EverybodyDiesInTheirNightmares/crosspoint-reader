@@ -479,6 +479,9 @@ void setup() {
 
   halTiltSensor.begin();
   halClock.begin();
+  if (halClock.seedSystemClockFromRtc()) {
+    LOG_INF("CLK", "System clock seeded from RTC");
+  }
 
 #if FREEINK_DEVICE_X4 || FREEINK_DEVICE_X3
   LOG_INF("MAIN", "Hardware detect: %s", gpio.deviceIsX3() ? "X3" : "X4");

@@ -51,6 +51,16 @@ TEST(ReaderSession, FinalizesLastRenderedPageDwell) {
   EXPECT_TRUE(session.isEmitWorthy());
 }
 
+TEST(ReaderSession, FinalizesDisplayedPageWhenTurnRenderHasNotCompleted) {
+  ReaderSession session;
+  anchor(session, 1000, 1000, 2400);
+  session.noteTurn(true, true);
+  session.finish(31000);
+
+  EXPECT_EQ(session.durationSeconds(), 30u);
+  EXPECT_TRUE(session.isEmitWorthy());
+}
+
 TEST(ReaderSession, ExcludesTimeWhileReaderIsCoveredByAnotherActivity) {
   ReaderSession session;
   anchor(session, 1000, 1000, 2400);

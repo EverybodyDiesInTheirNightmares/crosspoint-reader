@@ -20,8 +20,17 @@ class ReadingStatsActivity final : public UiListActivity {
   void activateIndex(int index) override;
   const char* headerTitle() const override;
 
+  // Rebuilds all rows from the store; call with the render lock held from
+  // outside onEnter().
+  void rebuildRows();
+
   // deque: push_back never reallocates, so the const char* pointers captured
   // in rowItems_ stay valid for the whole page's lifetime.
   std::deque<std::string> valueStorage_;
   std::vector<freeink::ui::ListItem> rowItems_;
+  std::vector<std::string> recentDayDates_;
+  std::vector<std::string> visibleBookIds_;
+  int heatmapIndex_ = -1;
+  int recentDayRowsStart_ = -1;
+  int bookRowsStart_ = -1;
 };
