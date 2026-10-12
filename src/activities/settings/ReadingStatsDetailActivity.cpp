@@ -190,7 +190,7 @@ void ReadingStatsDetailActivity::launchCorrection(const bool add) {
 int ReadingStatsDetailActivity::listCount() const { return static_cast<int>(rowItems_.size()); }
 
 const char* ReadingStatsDetailActivity::headerTitle() const {
-  return tr(bookId_.empty() ? STR_STATS_DAY_DETAIL : STR_STATS_BOOK_DETAIL);
+  return bookId_.empty() ? tr(STR_STATS_DAY_DETAIL) : tr(STR_STATS_BOOK_DETAIL);
 }
 
 void ReadingStatsDetailActivity::activateIndex(const int index) {
