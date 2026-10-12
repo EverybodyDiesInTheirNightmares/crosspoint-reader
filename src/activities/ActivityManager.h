@@ -17,7 +17,9 @@
 class Activity;    // forward declaration
 class RenderLock;  // forward declaration
 
-enum class HomeMenuItem { NONE, FILE_BROWSER, LIBRARY, OPDS_BROWSER, FILE_TRANSFER, SETTINGS_MENU, READING_STATS };
+// Note: READING_STATS_MENU, not READING_STATS — that name is a store-accessor
+// macro defined in ReadingStatsStore.h, which is included before this header.
+enum class HomeMenuItem { NONE, FILE_BROWSER, LIBRARY, OPDS_BROWSER, FILE_TRANSFER, SETTINGS_MENU, READING_STATS_MENU };
 
 /**
  * ActivityManager

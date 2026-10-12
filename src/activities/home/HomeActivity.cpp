@@ -323,7 +323,7 @@ void HomeActivity::loop() {
       case HomeMenuItem::FILE_TRANSFER:
         onFileTransferOpen();
         break;
-      case HomeMenuItem::READING_STATS:
+      case HomeMenuItem::READING_STATS_MENU:
         onReadingStatsOpen();
         break;
       case HomeMenuItem::SETTINGS_MENU:
